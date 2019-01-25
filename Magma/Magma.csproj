@@ -43,6 +43,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ConvertExtensions.cs" />
     <Compile Include="Magma.cs" />
     <Compile Include="PrimeNumber.cs" />
     <Compile Include="Program.cs" />

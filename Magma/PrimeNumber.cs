@@ -12,11 +12,11 @@ namespace Magma
     /// </summary>
     public static class PrimeNumber
     {
-        private static Random rand;
+        private static Random random;
 
         static PrimeNumber()
         {
-            rand = new Random();
+            random = new Random();
         }
 
         /// <summary>
@@ -43,8 +43,8 @@ namespace Magma
             for (int i = 0; i < 256; i++)
             {
                 byte[] buff = new byte[bits / 8];
-                rand.NextBytes(buff);
-                buff[0] = buff[0] < 100 ? (byte)rand.Next(100, 256) : buff[0];
+                random.NextBytes(buff);
+                buff[0] = buff[0] < 100 ? (byte)random.Next(100, 256) : buff[0];
                 BigInteger a = BigInteger.Parse(string.Join("", buff.Select(x => x.ToString("D3"))));
 
                 BigInteger number = BigInteger.ModPow(a, d, n);
@@ -74,7 +74,7 @@ namespace Magma
             BigInteger bigNumber = 0;
             for (int i = 0; i < bits - 1; i++)
             {
-                bigNumber += rand.Next(0, 2) > 0 ? BigInteger.Pow(2, i) : 0;
+                bigNumber += random.Next(0, 2) > 0 ? BigInteger.Pow(2, i) : 0;
             }
             bigNumber += BigInteger.Pow(2, bits - 1);
             return bigNumber;

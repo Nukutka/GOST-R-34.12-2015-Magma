@@ -1,18 +1,18 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-using System.Threading.Tasks;
+using ExtensionMethods;
 
 namespace Magma
 {
+    /// <summary>
+    /// Реализация ГОСТ Р 34.12-2015
+    /// </summary>
     static class Magma
     {
-        private const int n = 64;
-
-        private static byte[][] pi = new byte[8][]
+        // pi-подстановка
+        private static readonly byte[][] pi = new byte[8][]
         {
             new byte[16] {12, 4, 6, 2, 10, 5, 11, 9, 14, 8, 13, 7, 0, 3, 15, 1},
             new byte[16] {6, 8, 2, 3, 9, 10, 5, 12, 1, 14, 4, 7, 11, 13, 0, 15},
@@ -24,130 +24,52 @@ namespace Magma
             new byte[16] {1, 7, 14, 13, 0, 5, 8, 3, 4, 15, 10, 6, 9, 12, 11, 2}
         };
 
-        static Magma() { }
-
+        /// <summary>
+        /// Генерирует случайный 256-битный ключ
+        /// </summary>
         public static byte[] GetKey()
         {
             return PrimeNumber.GetPrimeNumber(256).ToByteArray();
         }
 
+        /// <summary>
+        /// Выполняет шифрование сообщения
+        /// </summary>
+        /// <param name="message">Сообщение</param>
+        /// <param name="key">256-битный ключ</param>
         public static string Encrypt(string message, byte[] key)
         {
-            //byte[][] K = GetIterationKeys(key);
-            byte[][] K = GetIterationKeys(ConvertHexStringToByteArray("ffeeddccbbaa99887766554433221100f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"));
-            byte[] encryptMessage = TransE(message, K);
-            return "";
-        }
-
-        private static byte[] TransE(string message, byte[][] K)
-        {
-            // byte[] a1 = ConvertHexStringToByteArray(ConvertStringToHexString(message));
-            byte[] tmp = ConvertHexStringToByteArray("fedcba9876543210");
-            byte[] a1 = tmp.Skip(4).ToArray();
-            byte[] a0 = tmp.Take(4).ToArray();
-            Console.WriteLine(ConvertByteArrayToHexString(a1) + " " + ConvertByteArrayToHexString(a0));
-    
-            for (int i = 0; i < 32; i++)
+            string encryptMessage = "";
+            int length = message.Length % 8 == 0 ? message.Length / 8 : message.Length / 8 + 1;
+            for (int i = 0; i < length; i++)
             {
-                TransG(K[i], ref a1, ref a0);
-                Console.WriteLine(ConvertByteArrayToHexString(K[i]));
-               // Console.WriteLine(ConvertByteArrayToHexString(a1) + " " + ConvertByteArrayToHexString(a0));
+                string part = message.PadRight(length * 8).Substring(i * 8, 8).PadRight(8);
+                string tmp = part.ToHexString();
+                byte[] messageBytes = part.ToHexString().ToByteArray();
+                byte[][] K = GetIterationKeys(key);
+                byte[] encryptBytes = TransE(messageBytes, K);
+                encryptMessage += encryptBytes.ToHexString();
             }
-            return a1.Concat(a0).ToArray();
-        }
-
-        private static void TransG(byte[] K, ref byte[] a1, ref byte[] a0)
-        {
-            byte[] tmp = a1;
-            a1 = a0;
-            a0 = TransX(TransSmallG(K, a0), tmp);
-        }
-
-        private static byte[] TransSmallG(byte[] K, byte[] a)
-        {
-            byte[] sum = AddMod32(K, a);
-            byte[] fourBitsArray = ConvertByteArrayToFourBitsArray(K);
-            for (int i = 0; i < 8; i++) // t-преобразование, выполняющее pi-подстановку
-            {
-                fourBitsArray[i] = pi[i][fourBitsArray[i]];
-            }
-            byte[] normalBytes = ConvertFourBitsArrayToByteArray(fourBitsArray);
-            byte[] res = CyclicShift11(normalBytes);
-            return res;
-        }
-
-        private static byte[] CyclicShift11(byte[] arr)
-        {
-            BitArray bitArray = new BitArray(arr);
-            BitArray tmpArr = new BitArray(11);
-            for (int i = 0; i < 11; i++)
-            {
-                tmpArr[i] = bitArray[i];
-            }
-            for (int i = 0; i < 21; i++)
-            {
-                bitArray[i] = bitArray[i + 11];
-            }
-            for (int i = 21; i < 31; i++)
-            {
-                bitArray[i] = tmpArr[i - 21];
-            }
-
-            byte[] res = new byte[(bitArray.Length - 1) / 8 + 1];
-            bitArray.CopyTo(res, 0);
-
-            return res;
+            return encryptMessage;
         }
 
         /// <summary>
-        /// Выполняет X-преобразование (xor)
+        /// Выполняет дешифрование сообщения
         /// </summary>
-        private static byte[] TransX(byte[] k, byte[] a)
+        /// <param name="message">Зашифрованное сообщение (hex)</param>
+        /// <param name="key">256-битный ключ</param>
+        public static string Decrypt(string message, byte[] key)
         {
-            byte[] result = new byte[4];
-            for (int i = 0; i < 4; i++)
+            string decryptMessage = "";
+            for (int i = 0; i < message.Length / 16; i++)
             {
-                result[i] = (byte)(k[i] ^ a[i]);
+                string part = message.Substring(i * 16, 16);
+                byte[] messageBytes = part.ToByteArray();
+                byte[][] K = GetIterationKeys(key);
+                byte[] decryptBytes = TransD(messageBytes, K);
+                decryptMessage += decryptBytes.ToHexString();
             }
-            return result;
-        }
-
-        private static byte[] ConvertByteArrayToFourBitsArray(byte[] arr)
-        {
-            byte[] res = new byte[8];
-            for (int i = 0; i < 4; i++)
-            {
-                res[2 * i] = (byte)(arr[i] / 16);
-                res[2 * i + 1] = (byte)(arr[i] % 16);
-            }
-            return res;
-        }
-
-        private static byte[] ConvertFourBitsArrayToByteArray(byte[] arr)
-        {
-            byte[] res = new byte[4];
-            for (int i = 0; i < 4; i++)
-            {
-                res[i] = (byte)(arr[2 * i] * 16 + arr[2 * i + 1]);
-            }
-            return res;
-        }
-
-        /// <summary>
-        /// Сложение в кольце 2^32
-        /// </summary>
-        /// <param name="a">Первое число</param>
-        /// <param name="b">Второе число</param>
-        private static byte[] AddMod32(byte[] a, byte[] b)
-        {
-            a = a.Concat(new byte[1]).ToArray();
-            b = b.Concat(new byte[1]).ToArray();
-            //var x = new BigInteger(a);
-            //var y = new BigInteger(b);
-            byte[] tmp = ((new BigInteger(a) + new BigInteger(b)) % BigInteger.Pow(2, 32)).ToByteArray();
-            byte[] res = new byte[4];
-            Array.Copy(tmp, 0, res, 0, 4);
-            return res;
+            return decryptMessage.ToDecString();
         }
 
         /// <summary>
@@ -172,35 +94,139 @@ namespace Magma
         }
 
         /// <summary>
-        /// Выполняет преобразование строки в ее 16-ричный вид
+        /// Выполняет E-подстановку E = G*[K32]G[K31]...G[K1]
         /// </summary>
-        /// <param name="input">Входная строка</param>
-        private static string ConvertStringToHexString(string input)
+        /// <param name="message">Зашифрованное сообщение</param>
+        /// <param name="K">Последовательность итерационных ключей</param>
+        private static byte[] TransE(byte[] message, byte[][] K)
         {
-            return string.Join("", input.Select(c => ((int)c).ToString("X2")));
-        }
+            byte[] a1 = message.Skip(4).ToArray();
+            byte[] a0 = message.Take(4).ToArray();
 
-        /// <summary>
-        /// Выполняется преобразование массива байт в hex строку
-        /// </summary>
-        /// <param name="input">Входная строка</param>
-        private static string ConvertByteArrayToHexString(this byte[] input)
-        {
-            return BitConverter.ToString(input.Reverse().ToArray()).Replace("-", "").ToLower();
-        }
-
-        /// <summary>
-        /// Выполняет преобразование hex строки в массив байт
-        /// </summary>
-        /// <param name="input">Входная строка</param>
-        private static byte[] ConvertHexStringToByteArray(this string input)
-        {
-            byte[] bytes = new byte[input.Length / 2];
-            for (int i = 0; i < bytes.Length; i++)
+            for (int i = 0; i < 32; i++)
             {
-                bytes[i] = Convert.ToByte(input.Substring((bytes.Length - i - 1) * 2, 2), 16);
+                TransG(K[i], ref a1, ref a0);
             }
-            return bytes;
+            return a1.Concat(a0).ToArray();
+        }
+
+        /// <summary>
+        /// Выполняет D-подстановку D = G*[K1]G[K2]...G[K32]
+        /// </summary>
+        /// <param name="message">Зашифрованное сообщение</param>
+        /// <param name="K">Последовательность итерационных ключей</param>
+        private static byte[] TransD(byte[] message, byte[][] K)
+        {
+            byte[] a1 = message.Skip(4).ToArray();
+            byte[] a0 = message.Take(4).ToArray();
+
+            for (int i = 31; i >= 0; i--)
+            {
+                TransG(K[i], ref a1, ref a0);
+            }
+            return a1.Concat(a0).ToArray();
+        }
+
+        /// <summary>
+        /// Выполняет G-преобразование
+        /// </summary>
+        /// <param name="K">Итерационный ключ</param>
+        /// <param name="a1">32-битная часть сообщениея</param>
+        /// <param name="a0">32-битная часть сообщениея</param>
+        private static void TransG(byte[] K, ref byte[] a1, ref byte[] a0)
+        {
+            byte[] tmp = a1;
+            a1 = a0;
+            a0 = TransX(TransSmallG(K, a0), tmp);
+        }
+
+        /// <summary>
+        /// Выполняет g-преобразование
+        /// </summary>
+        /// <param name="K">Итерационный ключ</param>
+        /// <param name="a">32-битная часть сообщениея</param>
+        private static byte[] TransSmallG(byte[] K, byte[] a)
+        {
+            byte[] sum = AddMod32(K, a);
+            byte[] fourBitsArray = sum.ToFourBitsArray();
+            for (int i = 0; i < 8; i++) // t-преобразование, выполняющее pi-подстановку
+            {
+                fourBitsArray[i] = pi[i][fourBitsArray[i]];
+            }
+            byte[] normalBytes = fourBitsArray.ToByteArray();
+            byte[] res = CyclicShift11(normalBytes);
+            return res;
+        }
+
+        /// <summary>
+        /// Выполняет циклический сдвиг последовательности на 11 бит влево
+        /// </summary>
+        /// <param name="arr"></param>
+        /// <returns></returns>
+        private static byte[] CyclicShift11(byte[] arr)
+        {
+            string bitsString = "";
+            for (int i = 0; i < 4; i++)
+            {
+                StringBuilder binary = new StringBuilder(Convert.ToString(arr[i], 2));
+                binary.Insert(0, "0", 8 - binary.Length);
+                bitsString += binary.ToString();
+            }
+            char[] bits = bitsString.ToCharArray();
+            char[] tmp = new char[11];
+
+            for (int i = 0; i < 11; i++)
+            {
+                tmp[i] = bits[i];
+            }
+            for (int i = 0; i < 21; i++)
+            {
+                bits[i] = bits[i + 11];
+            }
+            for (int i = 21; i < 31; i++)
+            {
+                bits[i] = tmp[i - 21];
+            }
+
+            byte[] res = new byte[4];
+            for (int i = 0; i < 4; i++)
+            {
+                res[i] = Convert.ToByte(new string(bits.Skip(i * 8).Take(8).ToArray()), 2);
+            }
+
+            return res;
+        }
+
+        /// <summary>
+        /// Выполняет X-преобразование (xor)
+        /// </summary>
+        private static byte[] TransX(byte[] k, byte[] a)
+        {
+            byte[] result = new byte[4];
+            for (int i = 0; i < 4; i++)
+            {
+                result[i] = (byte)(k[i] ^ a[i]);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Сложение в кольце 2^32
+        /// </summary>
+        /// <param name="a">Первое число</param>
+        /// <param name="b">Второе число</param>
+        private static byte[] AddMod32(byte[] a, byte[] b)
+        {
+            var x = new BigInteger(a);
+            var y = new BigInteger(b);
+            byte[] tmp = (new BigInteger(a) + new BigInteger(b) % BigInteger.Pow(2, 32)).ToByteArray();
+            if (tmp.Length < 4)
+            {
+                tmp = tmp.Concat(new byte[1]).ToArray();
+            }
+            byte[] res = new byte[4];
+            Array.Copy(tmp, 0, res, 0, 4);
+            return res;
         }
     }
 }
