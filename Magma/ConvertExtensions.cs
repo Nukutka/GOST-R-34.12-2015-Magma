@@ -13,10 +13,10 @@ namespace ExtensionMethods
         /// Выполняет преобразование строки в ее 16-ричный вид
         /// </summary>
         /// <param name="input">Входная строка</param>
-        public static string ToHexString(this string str)
+        public static string ToHexString(this string input)
         {
             var sb = new StringBuilder();
-            var bytes = Encoding.GetEncoding(1251).GetBytes(str);
+            var bytes = Encoding.GetEncoding(1251).GetBytes(input);
             foreach (var i in bytes)
             {
                 sb.Append(i.ToString("X2"));
@@ -27,13 +27,13 @@ namespace ExtensionMethods
         /// <summary>
         /// Выполняет преобразование 16-ричной строки в обычную
         /// </summary>
-        /// <param name="hexString">16-ричная строка</param>
-        public static string ToDecString(this string hexString)
+        /// <param name="input">16-ричная строка</param>
+        public static string ToDecString(this string input)
         {
-            var bytes = new byte[hexString.Length / 2];
+            var bytes = new byte[input.Length / 2];
             for (int i = 0; i < bytes.Length; i++)
             {
-                bytes[i] = Convert.ToByte(hexString.Substring(i * 2, 2), 16);
+                bytes[i] = Convert.ToByte(input.Substring(i * 2, 2), 16);
             }
             return Encoding.GetEncoding(1251).GetString(bytes);
         }
@@ -70,8 +70,8 @@ namespace ExtensionMethods
             byte[] res = new byte[8];
             for (int i = 0; i < 4; i++)
             {
-                res[2 * i] = (byte)(arr[i] / 16);
-                res[2 * i + 1] = (byte)(arr[i] % 16);
+                res[2 * i] = (byte)(arr[i] % 16);
+                res[2 * i + 1] = (byte)(arr[i] / 16);
             }
             return res;
         }
@@ -85,7 +85,7 @@ namespace ExtensionMethods
             byte[] res = new byte[4];
             for (int i = 0; i < 4; i++)
             {
-                res[i] = (byte)(arr[2 * i] * 16 + arr[2 * i + 1]);
+                res[i] = (byte)(arr[2 * i + 1] * 16 + arr[2 * i]);
             }
             return res;
         }

@@ -40,10 +40,10 @@ namespace Magma
         public static string Encrypt(string message, byte[] key)
         {
             string encryptMessage = "";
-            int length = message.Length % 8 == 0 ? message.Length / 8 : message.Length / 8 + 1;
-            for (int i = 0; i < length; i++)
+            int blockCount = message.Length % 8 == 0 ? message.Length / 8 : message.Length / 8 + 1;
+            for (int i = 0; i < blockCount; i++)
             {
-                string part = message.PadRight(length * 8).Substring(i * 8, 8).PadRight(8);
+                string part = message.PadRight(blockCount * 8).Substring(i * 8, 8).PadRight(8);
                 string tmp = part.ToHexString();
                 byte[] messageBytes = part.ToHexString().ToByteArray();
                 byte[][] K = GetIterationKeys(key);
@@ -166,11 +166,11 @@ namespace Magma
         private static byte[] CyclicShift11(byte[] arr)
         {
             string bitsString = "";
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < 4; i++) // байты в двоичные строки
             {
                 StringBuilder binary = new StringBuilder(Convert.ToString(arr[i], 2));
                 binary.Insert(0, "0", 8 - binary.Length);
-                bitsString += binary.ToString();
+                bitsString = binary.ToString() + bitsString;
             }
             char[] bits = bitsString.ToCharArray();
             char[] tmp = new char[11];
@@ -183,22 +183,22 @@ namespace Magma
             {
                 bits[i] = bits[i + 11];
             }
-            for (int i = 21; i < 31; i++)
+            for (int i = 21; i < 32; i++)
             {
                 bits[i] = tmp[i - 21];
             }
 
             byte[] res = new byte[4];
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < 4; i++) // двоичные строки в байты
             {
-                res[i] = Convert.ToByte(new string(bits.Skip(i * 8).Take(8).ToArray()), 2);
+                res[4 - i - 1] = Convert.ToByte(new string(bits.Skip(i * 8).Take(8).ToArray()), 2);
             }
 
             return res;
         }
 
         /// <summary>
-        /// Выполняет X-преобразование (xor)
+        /// Выполняет X-преобразование(xor)
         /// </summary>
         private static byte[] TransX(byte[] k, byte[] a)
         {
